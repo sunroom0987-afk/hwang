@@ -1,0 +1,398 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>업종별 산업안전보건 규칙·과태료 조회기</title>
+  <style>
+    :root {
+      --bg1: #f2f7f6;
+      --bg2: #e8eef8;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #dbe3ee;
+      --accent: #0f766e;
+      --accent2: #1d4ed8;
+      --warn: #9a3412;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 0%, #d9f2ee 0%, transparent 35%),
+        radial-gradient(circle at 90% 10%, #dbeafe 0%, transparent 30%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      line-height: 1.2;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .search-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #0d9488);
+      cursor: pointer;
+    }
+
+    button:hover { filter: brightness(1.03); }
+
+    .tag-list {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      border: 1px solid #bfded8;
+      background: #eefaf8;
+      color: #0f766e;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .result-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+      color: #0b3f3a;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      margin-top: 8px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    th {
+      background: #f5f9ff;
+      color: #1e3a8a;
+      font-weight: 700;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .warn {
+      border: 1px solid #fed7aa;
+      background: #fff7ed;
+      color: var(--warn);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 12px;
+    }
+
+    .links a {
+      color: var(--accent2);
+      text-decoration: none;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    .empty {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 8px 0;
+    }
+
+    @media (max-width: 760px) {
+      .search-wrap { grid-template-columns: 1fr; }
+      button { height: 42px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>업종별 산업안전보건 규칙·과태료 조회기</h1>
+      <p class="sub">한국 사업장에서 업종을 입력하면, 사업주가 우선 확인할 <strong>산업안전보건기준에 관한 규칙</strong> 조문과 <strong>산업안전보건법상 과태료 근거/금액</strong>을 보여줍니다.</p>
+      <div class="search-wrap">
+        <input id="industryInput" type="text" placeholder="예: 플라스틱 화장품 용기 제조, 건설업, 금속가공" />
+        <button id="searchBtn" type="button">조회</button>
+      </div>
+      <div class="tag-list" id="suggestions"></div>
+      <p class="note">팁: 상세 업종명이 아니어도 키워드(예: 플라스틱, 화장품, 건설, 금속, 식품)만 입력해도 조회됩니다.</p>
+    </section>
+
+    <section class="card" id="resultBox">
+      <p class="empty">업종을 입력하고 조회 버튼을 누르세요.</p>
+    </section>
+  </main>
+
+  <script>
+    const DATA = [
+      {
+        id: "plastic_cosmetic",
+        name: "플라스틱·화장품 용기 제조업",
+        keywords: ["플라스틱", "화장품", "용기", "사출", "인쇄", "코팅", "제조"],
+        rules: [
+          ["작업장 기본 안전", "제3조~제20조"],
+          ["보호구 지급·착용", "제31조~제34조"],
+          ["사전조사·작업계획", "제38조제1항제4호"],
+          ["환기장치", "제72조~제78조"],
+          ["사출성형기 방호", "제121조제1항~제3항"],
+          ["화재위험작업", "제241조제2항제1호~제6호, 제241조의2"],
+          ["화학설비 안전", "제255조~제269조"],
+          ["관리대상 유해물질", "제420조~제436조, 제443조"],
+          ["소음작업", "제513조~제517조"]
+        ],
+        penalties: [
+          ["안전보건관리책임자 미선임", "산업안전보건법 제175조제5항제1호", "500만원(1·2·3차 동일)"],
+          ["안전관리자/보건관리자 증원·교체 명령 불이행", "산업안전보건법 제175조제5항제2호", "500만원(1·2·3차 동일)"],
+          ["산업안전보건위원회 정기회의 미개최", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
+          ["안전검사 미실시 기계 사용 관련(해당 시)", "산업안전보건법 제175조제4항제3호", "1차 200~300만원 / 2차 600만원 / 3차 1,000만원(유형별)"],
+          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
+        ]
+      },
+      {
+        id: "construction",
+        name: "건설업",
+        keywords: ["건설", "토목", "건축", "현장", "철거"],
+        rules: [
+          ["추락·붕괴·낙하 예방", "제13조~제20조"],
+          ["보호구 지급·착용", "제31조~제34조"],
+          ["작업계획서", "제38조"],
+          ["가설통로·작업발판·안전난간", "관련 장(작업장 안전기준)"],
+          ["화재·폭발 예방", "제241조"],
+          ["건설업 유해위험방지", "해당 장 조문 적용"]
+        ],
+        penalties: [
+          ["산업안전보건위원회 미구성/미운영", "산업안전보건법 제175조제5항제1호", "최대 500만원(유형별 차등)"],
+          ["안전검사대상기계 안전검사 미실시", "산업안전보건법 제175조제4항제3호", "1차 200만원 / 2차 600만원 / 3차 1,000만원(1대당)"],
+          ["안전검사합격증명서 미부착", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원(1대당)"]
+        ]
+      },
+      {
+        id: "metal",
+        name: "금속가공·기계제조업",
+        keywords: ["금속", "기계", "절단", "프레스", "용접", "가공"],
+        rules: [
+          ["기계 방호장치", "제86조~제121조(유형별)"],
+          ["용접·용단 화재예방", "제241조제2항, 제241조의2"],
+          ["국소배기·환기", "제72조~제78조"],
+          ["소음작업", "제513조~제517조"]
+        ],
+        penalties: [
+          ["안전검사 미실시/미합격 설비 사용", "산업안전보건법 제175조제4항제3호", "1차 300만원 / 2차 600만원 / 3차 1,000만원(1대당)"],
+          ["안전검사합격증명서 미부착", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원(1대당)"],
+          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
+        ]
+      },
+      {
+        id: "food",
+        name: "식품 제조업",
+        keywords: ["식품", "음료", "가공", "포장", "제조"],
+        rules: [
+          ["작업장 기본 안전", "제3조~제20조"],
+          ["보호구", "제31조~제34조"],
+          ["혼합·교반·이송설비 안전", "제255조~제269조"],
+          ["세척·소독제 취급 환기", "제72조~제78조"],
+          ["소음작업", "제513조~제517조"]
+        ],
+        penalties: [
+          ["안전보건관리책임자 미선임", "산업안전보건법 제175조제5항제1호", "500만원(1·2·3차 동일)"],
+          ["위원회 정기회의 미개최", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
+          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
+        ]
+      }
+    ];
+
+    const SOURCES = [
+      { label: "국가법령정보센터: 산업안전보건기준에 관한 규칙", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273603" },
+      { label: "국가법령정보센터: 산업안전보건법", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273685" },
+      { label: "국가법령정보센터: 산업안전보건법 시행령(제119조/별표35)", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273350" }
+    ];
+
+    const inputEl = document.getElementById("industryInput");
+    const btnEl = document.getElementById("searchBtn");
+    const resultEl = document.getElementById("resultBox");
+    const suggEl = document.getElementById("suggestions");
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function buildSuggestions() {
+      const tags = ["플라스틱 화장품 용기 제조", "건설업", "금속가공", "식품 제조"];
+      suggEl.innerHTML = tags
+        .map((t) => `<span class="tag" data-key="${escapeHtml(t)}">${escapeHtml(t)}</span>`)
+        .join("");
+
+      suggEl.querySelectorAll(".tag").forEach((tag) => {
+        tag.addEventListener("click", () => {
+          inputEl.value = tag.getAttribute("data-key") || "";
+          runSearch();
+        });
+      });
+    }
+
+    function findIndustry(query) {
+      const q = query.trim().toLowerCase();
+      if (!q) return null;
+
+      let best = null;
+      let bestScore = 0;
+
+      for (const item of DATA) {
+        const tokens = [item.name, ...item.keywords].map((v) => v.toLowerCase());
+        let score = 0;
+
+        for (const token of tokens) {
+          if (q.includes(token)) score += 2;
+          if (token.includes(q)) score += 1;
+        }
+
+        if (score > bestScore) {
+          best = item;
+          bestScore = score;
+        }
+      }
+
+      return bestScore > 0 ? best : null;
+    }
+
+    function renderTable(headers, rows) {
+      const head = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
+      const body = rows
+        .map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`)
+        .join("");
+
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+
+    function renderResult(item, query) {
+      if (!item) {
+        resultEl.innerHTML = `
+          <h2 class="result-title">조회 결과 없음</h2>
+          <p class="empty">입력값 "${escapeHtml(query)}"에 대한 내부 매핑이 없습니다. 키워드를 더 단순하게 입력해 보세요. (예: 플라스틱, 건설, 금속, 식품)</p>
+          <p class="note">필요하면 이 파일의 <code>DATA</code> 배열에 업종과 조문/과태료 항목을 추가해 확장할 수 있습니다.</p>
+        `;
+        return;
+      }
+
+      const rulesTable = renderTable(
+        ["구분", "산업안전보건기준에 관한 규칙 조문"],
+        item.rules
+      );
+
+      const penaltyTable = renderTable(
+        ["위반 유형(대표)", "과태료 근거 조문", "과태료 금액"],
+        item.penalties
+      );
+
+      const sourceLinks = SOURCES
+        .map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`)
+        .join("");
+
+      resultEl.innerHTML = `
+        <h2 class="result-title">${escapeHtml(item.name)} 조회 결과</h2>
+        <h3>1) 사업주 준수 조문 (산업안전보건기준에 관한 규칙)</h3>
+        ${rulesTable}
+        <h3 style="margin-top:14px;">2) 과태료 조항 및 금액 (산업안전보건법/시행령 별표35 기반)</h3>
+        ${penaltyTable}
+        <div class="warn">
+          주의: 과태료는 위반유형, 위반횟수(1·2·3차), 사업장 규모 감경, 사고 발생 여부에 따라 달라질 수 있습니다.
+          최종 판단은 반드시 최신 법령 원문(법/시행령/별표)과 관할 고용노동관서 해석으로 확인하세요.
+        </div>
+        <div class="links" style="margin-top:12px;">
+          <strong>법령 확인 링크</strong>
+          <ul>${sourceLinks}</ul>
+        </div>
+      `;
+    }
+
+    function runSearch() {
+      const query = inputEl.value;
+      const item = findIndustry(query);
+      renderResult(item, query);
+    }
+
+    btnEl.addEventListener("click", runSearch);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+
+    buildSuggestions();
+  </script>
+</body>
+</html>
