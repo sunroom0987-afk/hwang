@@ -62,7 +62,25 @@
       margin-top: 12px;
     }
 
-    input[type="text"] {
+    .extra-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -71,9 +89,25 @@
       outline: none;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus,
+    input[type="number"]:focus {
       border-color: var(--accent2);
       box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    .check-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 2px;
+    }
+
+    .check-row label {
+      font-size: 13px;
+      color: #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     button {
@@ -183,6 +217,7 @@
 
     @media (max-width: 760px) {
       .search-wrap { grid-template-columns: 1fr; }
+      .extra-grid { grid-template-columns: 1fr; }
       button { height: 42px; }
     }
   </style>
@@ -197,8 +232,24 @@
         <input id="industryInput" type="text" placeholder="예: 플라스틱 용기 제조업, 시스템 소프트웨어 개발 및 공급업, 20129" />
         <button id="searchBtn" type="button">조회</button>
       </div>
+      <div class="extra-grid">
+        <div class="field">
+          <label for="workerCountInput">상시 근로자 수(명)</label>
+          <input id="workerCountInput" type="number" min="0" step="1" placeholder="예: 12" />
+        </div>
+        <div class="field">
+          <label>별표1 수동 체크(해당 시)</label>
+          <div class="check-row">
+            <label><input id="officeOnlyInput" type="checkbox" /> 사무직만 사용 사업장</label>
+            <label><input id="mineLawInput" type="checkbox" /> 광산안전법 적용</label>
+            <label><input id="nuclearLawInput" type="checkbox" /> 원자력안전법 적용</label>
+            <label><input id="aviationLawInput" type="checkbox" /> 항공안전법 적용</label>
+            <label><input id="shipLawInput" type="checkbox" /> 선박안전법 적용</label>
+          </div>
+        </div>
+      </div>
       <div class="tag-list" id="suggestions"></div>
-      <p class="note">입력 예시: 업종명(부분 검색 가능), KSIC 코드(1~5자리). 검색 결과 후보를 눌러 바로 재조회할 수 있습니다.</p>
+      <p class="note">입력 예시: 업종명(부분 검색 가능), KSIC 코드(1~5자리). 상시 근로자 수를 함께 넣으면 산업안전보건법 시행령 별표1 적용 제외 여부를 함께 판정합니다.</p>
     </section>
 
     <section class="card" id="resultBox">
@@ -254,7 +305,8 @@
     const SOURCES = [
       { label: "국가법령정보센터: 산업안전보건기준에 관한 규칙", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273603" },
       { label: "국가법령정보센터: 산업안전보건법", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273685" },
-      { label: "국가법령정보센터: 산업안전보건법 시행령(별표35 과태료)", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273350" }
+      { label: "국가법령정보센터: 산업안전보건법 시행령(별표35 과태료)", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273350" },
+      { label: "국가법령정보센터: 산업안전보건법 시행령 별표1(적용 제외)", url: "https://law.go.kr/LSW/flDownload.do?flNm=%5B%EB%B3%84%ED%91%9C+1%5D+%EB%B2%95%EC%9D%98+%EC%9D%BC%EB%B6%80%EB%A5%BC+%EC%A0%81%EC%9A%A9%ED%95%98%EC%A7%80+%EC%95%84%EB%8B%88%ED%95%98%EB%8A%94+%EC%82%AC%EC%97%85+%EB%B0%8F+%EA%B7%9C%EC%A0%95%28%EC%A0%9C2%EC%A1%B0%EC%9D%982%EC%A0%9C1%ED%95%AD+%EA%B4%80%EB%A0%A8%29%0A&flSeq=43122215" }
     ];
 
     const SECTION_BY_DIVISION = [
@@ -265,6 +317,12 @@
     ];
 
     const inputEl = document.getElementById("industryInput");
+    const workerCountEl = document.getElementById("workerCountInput");
+    const officeOnlyEl = document.getElementById("officeOnlyInput");
+    const mineLawEl = document.getElementById("mineLawInput");
+    const nuclearLawEl = document.getElementById("nuclearLawInput");
+    const aviationLawEl = document.getElementById("aviationLawInput");
+    const shipLawEl = document.getElementById("shipLawInput");
     const btnEl = document.getElementById("searchBtn");
     const resultEl = document.getElementById("resultBox");
     const suggEl = document.getElementById("suggestions");
@@ -285,7 +343,11 @@
       return String(value || "")
         .toLowerCase()
         .replace(/\s+/g, "")
-        .replace(/[()\[\],./·\-~]/g, "");
+        .replace(/[()\[\],./·\-~;:]/g, "");
+    }
+
+    function containsNorm(text, keyword) {
+      return normalize(text).includes(normalize(keyword));
     }
 
     function sectionFromCode(code) {
@@ -296,6 +358,38 @@
         if (div >= start && div <= end) return section;
       }
       return null;
+    }
+
+    function getDivision(code) {
+      if (/^[A-U]$/.test(code)) return null;
+      const n = Number(String(code).slice(0, 2));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function getContext(mainItem) {
+      const rawCode = String(mainItem.code);
+      const section = sectionFromCode(rawCode);
+      const codes = [];
+      if (section) codes.push(section);
+      if (!/^[A-U]$/.test(rawCode)) {
+        if (rawCode.length >= 2) codes.push(rawCode.slice(0, 2));
+        if (rawCode.length >= 3) codes.push(rawCode.slice(0, 3));
+        if (rawCode.length >= 4) codes.push(rawCode.slice(0, 4));
+        if (rawCode.length >= 5) codes.push(rawCode.slice(0, 5));
+      }
+
+      const uniqueCodes = [...new Set(codes)];
+      const names = uniqueCodes
+        .map((code) => (CODE_TO_ITEM.get(code) || {}).name)
+        .filter(Boolean);
+
+      return {
+        section,
+        division: getDivision(rawCode),
+        names,
+        joined: names.join(" "),
+        normalizedJoined: normalize(names.join(" "))
+      };
     }
 
     function renderTable(headers, rows) {
@@ -331,9 +425,7 @@
         if (code.toLowerCase() === qNorm) score += 140;
         else if (code.toLowerCase().startsWith(qNorm)) score += 45;
 
-        if (score > 0) {
-          scored.push({ item, score });
-        }
+        if (score > 0) scored.push({ item, score });
       }
 
       scored.sort((a, b) => b.score - a.score || b.item.digit - a.item.digit || a.item.code.localeCompare(b.item.code));
@@ -344,11 +436,122 @@
       return [...COMMON_RULES, ...(SECTION_RULES[section] || [])];
     }
 
+    function evaluateAnnex1(mainItem, workerCount, manualFlags) {
+      const ctx = getContext(mainItem);
+      const m = ctx.normalizedJoined;
+      const d = ctx.division;
+      const entries = [];
+
+      if (manualFlags.mineLaw || manualFlags.nuclearLaw || manualFlags.aviationLaw || manualFlags.shipLaw) {
+        entries.push({
+          item: "제1호",
+          reason: "광산/원자력/항공/선박 안전 관련 타법 적용 사업(수동 체크)",
+          excluded: "별표1 제1호 적용 제외 규정(법 제13·14·15·제3장 등)"
+        });
+      }
+
+      const item2 =
+        containsNorm(m, "소프트웨어 개발 및 공급업") ||
+        containsNorm(m, "컴퓨터 프로그래밍") ||
+        containsNorm(m, "시스템 통합 및 관리업") ||
+        containsNorm(m, "정보서비스업") ||
+        ctx.section === "K" ||
+        containsNorm(m, "전문서비스업") ||
+        containsNorm(m, "건축기술, 엔지니어링 및 기타 과학기술 서비스업") ||
+        (containsNorm(m, "기타 전문, 과학 및 기술 서비스업") && !containsNorm(m, "사진 처리업")) ||
+        containsNorm(m, "사업지원 서비스업") ||
+        containsNorm(m, "사회복지 서비스업");
+
+      if (item2) {
+        entries.push({
+          item: "제2호",
+          reason: "소프트웨어·정보서비스·금융보험·전문과학기술·사업지원·사회복지 계열 업종 해당",
+          excluded: "법 제31조(같은 조 제3항 특별교육 제외)"
+        });
+      }
+
+      const under50 = Number.isFinite(workerCount) && workerCount < 50;
+      if (under50) {
+        const item3 =
+          d === 1 ||
+          d === 3 ||
+          containsNorm(m, "환경 정화 및 복원업") ||
+          d === 47 ||
+          containsNorm(m, "영화, 비디오물, 방송프로그램 제작 및 배급업") ||
+          containsNorm(m, "녹음시설운영업") ||
+          d === 60 ||
+          (d === 68 && !containsNorm(m, "부동산 관리업")) ||
+          (containsNorm(m, "임대업") && !containsNorm(m, "부동산")) ||
+          d === 70 ||
+          (d === 86 && !containsNorm(m, "병원")) ||
+          d === 90 ||
+          d === 91 ||
+          d === 94 ||
+          (d === 96 && !containsNorm(m, "세탁업"));
+
+        if (item3) {
+          entries.push({
+            item: "제3호",
+            reason: "별표1 제3호 대상 업종 + 상시 근로자 50명 미만",
+            excluded: "별표1 제3호 적용 제외 규정(원문 확인 필요)"
+          });
+        }
+      }
+
+      const item4 =
+        d === 84 ||
+        (d === 85 && !containsNorm(m, "청소년 수련시설 운영업")) ||
+        d === 99;
+
+      if (item4) {
+        entries.push({
+          item: "제4호",
+          reason: "공공행정·교육서비스(일부 제외)·국제 및 외국기관 해당",
+          excluded: "법 제2장, 제3장, 제29조제1항~제8항/제10항, 제31조, 제31조의2, 제32조, 제32조의2, 제32조의3"
+        });
+      }
+
+      if (manualFlags.officeOnly) {
+        entries.push({
+          item: "제5호",
+          reason: "사무직 근로자만 사용하는 사업장(수동 체크)",
+          excluded: "별표1 제5호 적용 제외 규정(원문 확인 필요)"
+        });
+      }
+
+      const under5 = Number.isFinite(workerCount) && workerCount < 5;
+      if (under5) {
+        entries.push({
+          item: "제6호",
+          reason: "상시 근로자 5명 미만 사업장",
+          excluded: "법 제2장, 제3장, 제31조(제3항 특별교육 제외), 제31조의2, 제32조, 제32조의2, 제32조의3, 제49조, 제50조, 제51조의2"
+        });
+      }
+
+      return entries;
+    }
+
     function renderResult(mainItem, candidates) {
       const section = sectionFromCode(mainItem.code);
       const rules = getRulesBySection(section);
+      const workerCountRaw = workerCountEl.value.trim();
+      const workerCount = workerCountRaw === "" ? NaN : Number(workerCountRaw);
+      const annexMatches = evaluateAnnex1(mainItem, workerCount, {
+        officeOnly: officeOnlyEl.checked,
+        mineLaw: mineLawEl.checked,
+        nuclearLaw: nuclearLawEl.checked,
+        aviationLaw: aviationLawEl.checked,
+        shipLaw: shipLawEl.checked
+      });
+
       const rulesTable = renderTable(["구분", "산업안전보건기준에 관한 규칙 조문"], rules);
       const penaltyTable = renderTable(["위반 유형(대표)", "과태료 근거 조문", "과태료 금액"], COMMON_PENALTIES);
+      const annexTable = renderTable(
+        ["별표1 해당호", "해당 사유(판정근거)", "적용 제외 규정(요약)"],
+        annexMatches.length
+          ? annexMatches.map((x) => [x.item, x.reason, x.excluded])
+          : [["해당 없음", "입력한 업종/근로자수/체크 기준으로는 별표1 적용 제외 항목 미확인", "-"]]
+      );
       const links = SOURCES
         .map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`)
         .join("");
@@ -365,9 +568,11 @@
         ${rulesTable}
         <h3 style="margin-top:14px;">2) 과태료 조항 및 금액 (산업안전보건법/시행령 별표35 기반)</h3>
         ${penaltyTable}
+        <h3 style="margin-top:14px;">3) 산업안전보건법 시행령 별표1 적용 제외 여부</h3>
+        ${annexTable}
         <div class="warn">
           주의: 과태료는 위반횟수(1·2·3차), 위반행위 세부유형, 사업장 규모 감경, 대상 인원 수(예: 건강진단) 등에 따라 달라집니다.
-          최종 금액은 최신 법령 원문과 관할 고용노동관서 집행기준으로 확인해야 합니다.
+          별표1 판정은 KSIC 기반 자동추정과 사용자 체크를 함께 사용한 결과이므로, 최종 적용은 최신 법령 원문으로 반드시 재확인해야 합니다.
         </div>
         <div style="margin-top:12px;">
           <strong>유사 검색 결과</strong>
@@ -431,6 +636,9 @@
     buildSuggestions();
     btnEl.addEventListener("click", runSearch);
     inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runSearch();
+    });
+    workerCountEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") runSearch();
     });
   </script>
