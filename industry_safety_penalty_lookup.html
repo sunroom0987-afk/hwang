@@ -361,6 +361,23 @@
       default: ["위험성평가 시행·기록 방식", "안전보건교육 실시 주기·대상", "도급 시 안전보건 협의체 운영 기준", "보호구 지급·착용관리 의무", "작업환경측정 및 건강진단 대상 판단"]
     };
 
+    const SIMPLE_SECTION_KEYWORDS = [
+      { keys: ["제조업", "제조"], section: "C", label: "제조업" },
+      { keys: ["건설업", "건설"], section: "F", label: "건설업" },
+      { keys: ["도매", "소매", "유통"], section: "G", label: "도매·소매업" },
+      { keys: ["운수", "물류", "창고", "운송"], section: "H", label: "운수·창고업" },
+      { keys: ["숙박", "음식점", "외식"], section: "I", label: "숙박·음식점업" },
+      { keys: ["정보통신", "it", "소프트웨어", "개발"], section: "J", label: "정보통신업" },
+      { keys: ["금융", "보험"], section: "K", label: "금융·보험업" },
+      { keys: ["부동산"], section: "L", label: "부동산업" },
+      { keys: ["전문", "엔지니어링", "연구", "광고"], section: "M", label: "전문·과학기술업" },
+      { keys: ["사업지원", "임대", "경비", "청소"], section: "N", label: "사업시설관리·지원업" },
+      { keys: ["교육"], section: "P", label: "교육서비스업" },
+      { keys: ["보건", "병원", "복지"], section: "Q", label: "보건·사회복지업" },
+      { keys: ["문화", "예술", "스포츠", "여가"], section: "R", label: "예술·스포츠·여가업" },
+      { keys: ["수리", "세탁", "미용", "개인서비스"], section: "S", label: "협회·수리·개인서비스업" }
+    ];
+
     const inputEl = document.getElementById("industryInput");
     const workerCountEl = document.getElementById("workerCountInput");
     const officeEl = document.getElementById("officeInput");
@@ -378,6 +395,7 @@
     const qnaResultCache = new Map();
 
     const CODE_TO_ITEM = new Map(KSIC.map((row) => [row.code, row]));
+    const GROUP_ITEMS = KSIC.filter((row) => row.digit === 3 || row.digit === 4 || row.digit === 5);
 
     function escapeHtml(str) {
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
@@ -468,6 +486,26 @@
 
       scored.sort((a, b) => b.score - a.score || b.item.digit - a.item.digit || a.item.code.localeCompare(b.item.code));
       return scored.slice(0, Number.isFinite(limit) ? limit : 20).map((v) => v.item);
+    }
+
+    function detectSimpleSection(query) {
+      const q = normalize(query);
+      if (!q) return null;
+      for (const map of SIMPLE_SECTION_KEYWORDS) {
+        if (map.keys.some((k) => q.includes(normalize(k)))) return map;
+      }
+      return null;
+    }
+
+    function getSectionExamples(section, limit) {
+      const pool = GROUP_ITEMS.filter((item) => sectionFromCode(item.code) === section);
+      const picked = [];
+      for (const item of pool) {
+        if (picked.length >= limit) break;
+        if (item.name.includes("기타")) continue;
+        picked.push(item);
+      }
+      return picked;
     }
 
     function getRulesBySection(section) {
@@ -657,6 +695,29 @@
 
     function renderLiveExamples() {
       const query = inputEl.value;
+      const simple = detectSimpleSection(query);
+      if (simple) {
+        const examples = getSectionExamples(simple.section, 10);
+        if (!examples.length) {
+          liveMatchesEl.innerHTML = "<span class='empty'>유사 업종을 찾지 못했습니다.</span>";
+          return;
+        }
+        const title = `<span class=\"empty\">'${escapeHtml(simple.label)}' 관련 세부 업종 예시</span>`;
+        const buttons = examples.map((r) => `<button class=\"match\" data-live-code=\"${escapeHtml(r.code)}\">${escapeHtml(r.code)} ${escapeHtml(r.name)}</button>`).join("");
+        liveMatchesEl.innerHTML = `${title}${buttons}`;
+        liveMatchesEl.querySelectorAll(".match[data-live-code]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const code = btn.getAttribute("data-live-code");
+            const picked = CODE_TO_ITEM.get(code);
+            if (!picked) return;
+            inputEl.value = `${picked.code} ${picked.name}`;
+            runSearch();
+            renderLiveExamples();
+          });
+        });
+        return;
+      }
+
       const results = searchKSIC(query, 8);
       if (!query.trim()) {
         liveMatchesEl.innerHTML = "<span class='empty'>업종 키워드를 입력하면 유사 업종을 보여줍니다.</span>";
