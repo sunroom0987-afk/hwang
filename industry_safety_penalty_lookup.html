@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>업종별 산업안전보건 규칙·과태료 조회기</title>
+  <title>KSIC 전 업종 산업안전보건 규칙·과태료 조회기</title>
   <style>
     :root {
       --bg1: #f2f7f6;
@@ -32,7 +32,7 @@
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1120px;
       margin: 0 auto;
       display: grid;
       gap: 16px;
@@ -46,17 +46,13 @@
       padding: 18px;
     }
 
-    h1 {
-      margin: 0 0 6px;
-      font-size: 26px;
-      line-height: 1.2;
-    }
+    h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.2; }
 
-    .sub {
+    .sub, .meta, .note {
       margin: 0;
       color: var(--muted);
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .search-wrap {
@@ -139,13 +135,6 @@
       font-weight: 700;
     }
 
-    .note {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.55;
-    }
-
     .warn {
       border: 1px solid #fed7aa;
       background: #fff7ed;
@@ -157,17 +146,39 @@
       margin-top: 12px;
     }
 
-    .links a {
-      color: var(--accent2);
-      text-decoration: none;
-    }
-
+    .links a { color: var(--accent2); text-decoration: none; }
     .links a:hover { text-decoration: underline; }
 
-    .empty {
-      color: var(--muted);
-      font-size: 14px;
-      padding: 8px 0;
+    .empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
+    .match-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .match {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #1e293b;
+      cursor: pointer;
+    }
+
+    .match:hover {
+      border-color: #94a3b8;
+      background: #f8fafc;
+    }
+
+    code {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-size: 12px;
     }
 
     @media (max-width: 760px) {
@@ -179,14 +190,15 @@
 <body>
   <main class="container">
     <section class="card">
-      <h1>업종별 산업안전보건 규칙·과태료 조회기</h1>
-      <p class="sub">한국 사업장에서 업종을 입력하면, 사업주가 우선 확인할 <strong>산업안전보건기준에 관한 규칙</strong> 조문과 <strong>산업안전보건법상 과태료 근거/금액</strong>을 보여줍니다.</p>
+      <h1>KSIC 전 업종 산업안전보건 규칙·과태료 조회기</h1>
+      <p class="sub">업종명 또는 KSIC 코드(예: <code>20129</code>, <code>C</code>)를 입력하면 해당 업종의 KSIC 분류를 인식해 사업주가 우선 확인할 조문을 보여줍니다.</p>
+      <p class="meta" id="loadedMeta">KSIC 데이터 로딩 중...</p>
       <div class="search-wrap">
-        <input id="industryInput" type="text" placeholder="예: 플라스틱 화장품 용기 제조, 건설업, 금속가공" />
+        <input id="industryInput" type="text" placeholder="예: 플라스틱 용기 제조업, 시스템 소프트웨어 개발 및 공급업, 20129" />
         <button id="searchBtn" type="button">조회</button>
       </div>
       <div class="tag-list" id="suggestions"></div>
-      <p class="note">팁: 상세 업종명이 아니어도 키워드(예: 플라스틱, 화장품, 건설, 금속, 식품)만 입력해도 조회됩니다.</p>
+      <p class="note">입력 예시: 업종명(부분 검색 가능), KSIC 코드(1~5자리). 검색 결과 후보를 눌러 바로 재조회할 수 있습니다.</p>
     </section>
 
     <section class="card" id="resultBox">
@@ -194,97 +206,74 @@
     </section>
   </main>
 
+  <script src="./ksic11_full.js"></script>
   <script>
-    const DATA = [
-      {
-        id: "plastic_cosmetic",
-        name: "플라스틱·화장품 용기 제조업",
-        keywords: ["플라스틱", "화장품", "용기", "사출", "인쇄", "코팅", "제조"],
-        rules: [
-          ["작업장 기본 안전", "제3조~제20조"],
-          ["보호구 지급·착용", "제31조~제34조"],
-          ["사전조사·작업계획", "제38조제1항제4호"],
-          ["환기장치", "제72조~제78조"],
-          ["사출성형기 방호", "제121조제1항~제3항"],
-          ["화재위험작업", "제241조제2항제1호~제6호, 제241조의2"],
-          ["화학설비 안전", "제255조~제269조"],
-          ["관리대상 유해물질", "제420조~제436조, 제443조"],
-          ["소음작업", "제513조~제517조"]
-        ],
-        penalties: [
-          ["안전보건관리책임자 미선임", "산업안전보건법 제175조제5항제1호", "500만원(1·2·3차 동일)"],
-          ["안전관리자/보건관리자 증원·교체 명령 불이행", "산업안전보건법 제175조제5항제2호", "500만원(1·2·3차 동일)"],
-          ["산업안전보건위원회 정기회의 미개최", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
-          ["안전검사 미실시 기계 사용 관련(해당 시)", "산업안전보건법 제175조제4항제3호", "1차 200~300만원 / 2차 600만원 / 3차 1,000만원(유형별)"],
-          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
-        ]
-      },
-      {
-        id: "construction",
-        name: "건설업",
-        keywords: ["건설", "토목", "건축", "현장", "철거"],
-        rules: [
-          ["추락·붕괴·낙하 예방", "제13조~제20조"],
-          ["보호구 지급·착용", "제31조~제34조"],
-          ["작업계획서", "제38조"],
-          ["가설통로·작업발판·안전난간", "관련 장(작업장 안전기준)"],
-          ["화재·폭발 예방", "제241조"],
-          ["건설업 유해위험방지", "해당 장 조문 적용"]
-        ],
-        penalties: [
-          ["산업안전보건위원회 미구성/미운영", "산업안전보건법 제175조제5항제1호", "최대 500만원(유형별 차등)"],
-          ["안전검사대상기계 안전검사 미실시", "산업안전보건법 제175조제4항제3호", "1차 200만원 / 2차 600만원 / 3차 1,000만원(1대당)"],
-          ["안전검사합격증명서 미부착", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원(1대당)"]
-        ]
-      },
-      {
-        id: "metal",
-        name: "금속가공·기계제조업",
-        keywords: ["금속", "기계", "절단", "프레스", "용접", "가공"],
-        rules: [
-          ["기계 방호장치", "제86조~제121조(유형별)"],
-          ["용접·용단 화재예방", "제241조제2항, 제241조의2"],
-          ["국소배기·환기", "제72조~제78조"],
-          ["소음작업", "제513조~제517조"]
-        ],
-        penalties: [
-          ["안전검사 미실시/미합격 설비 사용", "산업안전보건법 제175조제4항제3호", "1차 300만원 / 2차 600만원 / 3차 1,000만원(1대당)"],
-          ["안전검사합격증명서 미부착", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원(1대당)"],
-          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
-        ]
-      },
-      {
-        id: "food",
-        name: "식품 제조업",
-        keywords: ["식품", "음료", "가공", "포장", "제조"],
-        rules: [
-          ["작업장 기본 안전", "제3조~제20조"],
-          ["보호구", "제31조~제34조"],
-          ["혼합·교반·이송설비 안전", "제255조~제269조"],
-          ["세척·소독제 취급 환기", "제72조~제78조"],
-          ["소음작업", "제513조~제517조"]
-        ],
-        penalties: [
-          ["안전보건관리책임자 미선임", "산업안전보건법 제175조제5항제1호", "500만원(1·2·3차 동일)"],
-          ["위원회 정기회의 미개최", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
-          ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
-        ]
-      }
+    const KSIC = Array.isArray(window.KSIC11_FULL) ? window.KSIC11_FULL : [];
+
+    const COMMON_RULES = [
+      ["작업장 기본 안전", "제3조~제20조"],
+      ["보호구 지급·착용", "제31조~제34조"],
+      ["관리감독·위험작업 통제", "제35조~제36조"],
+      ["작업계획 수립(해당 작업)", "제38조"],
+      ["환기·국소배기", "제72조~제78조"],
+      ["화재·폭발 예방", "제241조제2항제1호~제6호, 제241조의2"]
+    ];
+
+    const SECTION_RULES = {
+      A: [["농·임·어업 기계·장비 안전", "기계·설비 관련 조문(제86조~제121조 유형별 적용)"]],
+      B: [["광업 유해·위험작업 안전기준", "관련 장 조문 적용"]],
+      C: [["제조업 기계 방호", "제86조~제121조"], ["화학설비 안전", "제255조~제269조"], ["관리대상 유해물질", "제420조~제436조, 제443조"], ["소음작업", "제513조~제517조"]],
+      D: [["전기·가스 설비 안전", "전기·압력·화재 관련 조문 적용"]],
+      E: [["폐기물·원료재생 유해물질 관리", "제420조~제436조, 제443조"]],
+      F: [["건설업 추락·낙하·붕괴 예방", "제13조~제20조 및 건설 관련 장"], ["가설구조물/작업발판/통로", "건설작업 안전기준 조문"]],
+      G: [["창고·하역·운반기계 안전", "기계·운반 관련 조문 적용"]],
+      H: [["운수·하역 작업 안전", "작업장·운반설비 관련 조문 적용"]],
+      I: [["주방·가열기기·환기 안전", "화재·환기·유해물질 관련 조문 적용"]],
+      J: [["전기설비·사무작업장 안전", "작업장 기본·전기 관련 조문"]],
+      K: [["사무·전산설비 안전", "작업장 기본·전기 관련 조문"]],
+      L: [["시설관리·건물유지보수 안전", "작업계획·화재예방·보호구 조문"]],
+      M: [["시험·분석·연구 화학물질 안전", "제420조~제436조, 제443조"]],
+      N: [["사업지원·임대·시설관리 작업안전", "작업장 기본·보호구·화재 조문"]],
+      O: [["공공행정 현업작업 안전", "업무별 유해·위험요인별 조문 적용"]],
+      P: [["교육서비스 실습장 안전", "기계·화학·전기 실습 유형별 조문"]],
+      Q: [["보건·사회복지 유해요인 관리", "유해물질·작업환경·보호구 조문"]],
+      R: [["문화·체육시설 안전관리", "작업장 기본·전기·화재 조문"]],
+      S: [["수리·개인서비스 기계·전기 안전", "기계 방호·전기·화재 조문"]],
+      T: [["가사서비스 안전", "작업장 기본·화재·보호구 조문"]],
+      U: [["국제·외국기관 시설안전", "작업장 기본·화재·보호구 조문"]]
+    };
+
+    const COMMON_PENALTIES = [
+      ["안전보건관리책임자 미선임", "산업안전보건법 제175조제5항제1호", "500만원"],
+      ["산업안전보건위원회 정기회의 미개최", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
+      ["안전검사 대상기계 안전검사 미실시", "산업안전보건법 제175조제4항제3호", "1차 200~300만원 / 2차 600만원 / 3차 1,000만원(유형별)"],
+      ["안전검사합격증명서 미부착", "산업안전보건법 제175조제5항제1호", "1차 50만원 / 2차 250만원 / 3차 500만원"],
+      ["건강진단 미실시(대상자 1명당)", "산업안전보건법 제175조제4항제7호", "1차 10만원 / 2차 20만원 / 3차 30만원"]
     ];
 
     const SOURCES = [
       { label: "국가법령정보센터: 산업안전보건기준에 관한 규칙", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273603" },
       { label: "국가법령정보센터: 산업안전보건법", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273685" },
-      { label: "국가법령정보센터: 산업안전보건법 시행령(제119조/별표35)", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273350" }
+      { label: "국가법령정보센터: 산업안전보건법 시행령(별표35 과태료)", url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=273350" }
+    ];
+
+    const SECTION_BY_DIVISION = [
+      [1, 3, "A"], [5, 8, "B"], [10, 34, "C"], [35, 35, "D"], [36, 39, "E"],
+      [41, 42, "F"], [45, 47, "G"], [49, 52, "H"], [55, 56, "I"], [58, 63, "J"],
+      [64, 66, "K"], [68, 68, "L"], [70, 73, "M"], [74, 76, "N"], [84, 84, "O"],
+      [85, 85, "P"], [86, 87, "Q"], [90, 91, "R"], [94, 96, "S"], [97, 98, "T"], [99, 99, "U"]
     ];
 
     const inputEl = document.getElementById("industryInput");
     const btnEl = document.getElementById("searchBtn");
     const resultEl = document.getElementById("resultBox");
     const suggEl = document.getElementById("suggestions");
+    const metaEl = document.getElementById("loadedMeta");
+
+    const CODE_TO_ITEM = new Map(KSIC.map((row) => [row.code, row]));
 
     function escapeHtml(str) {
-      return str
+      return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -292,11 +281,140 @@
         .replace(/'/g, "&#039;");
     }
 
-    function buildSuggestions() {
-      const tags = ["플라스틱 화장품 용기 제조", "건설업", "금속가공", "식품 제조"];
-      suggEl.innerHTML = tags
-        .map((t) => `<span class="tag" data-key="${escapeHtml(t)}">${escapeHtml(t)}</span>`)
+    function normalize(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/\s+/g, "")
+        .replace(/[()\[\],./·\-~]/g, "");
+    }
+
+    function sectionFromCode(code) {
+      if (/^[A-U]$/.test(code)) return code;
+      const div = Number(String(code).slice(0, 2));
+      if (!Number.isFinite(div)) return null;
+      for (const [start, end, section] of SECTION_BY_DIVISION) {
+        if (div >= start && div <= end) return section;
+      }
+      return null;
+    }
+
+    function renderTable(headers, rows) {
+      const head = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
+      const body = rows
+        .map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`)
         .join("");
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+
+    function searchKSIC(query) {
+      const raw = String(query || "").trim();
+      const qNorm = normalize(raw);
+      if (!qNorm) return [];
+
+      const codeLike = raw.toUpperCase();
+      if (/^[A-U]$/.test(codeLike) || /^\d{2,5}$/.test(codeLike)) {
+        const exact = CODE_TO_ITEM.get(codeLike);
+        if (exact) return [exact];
+      }
+
+      const scored = [];
+      for (const item of KSIC) {
+        const nameNorm = normalize(item.name);
+        const code = item.code;
+        let score = 0;
+
+        if (nameNorm === qNorm) score += 120;
+        else if (nameNorm.startsWith(qNorm)) score += 95;
+        else if (nameNorm.includes(qNorm)) score += 80;
+
+        if (qNorm.includes(nameNorm) && nameNorm.length > 1) score += 25;
+        if (code.toLowerCase() === qNorm) score += 140;
+        else if (code.toLowerCase().startsWith(qNorm)) score += 45;
+
+        if (score > 0) {
+          scored.push({ item, score });
+        }
+      }
+
+      scored.sort((a, b) => b.score - a.score || b.item.digit - a.item.digit || a.item.code.localeCompare(b.item.code));
+      return scored.slice(0, 20).map((v) => v.item);
+    }
+
+    function getRulesBySection(section) {
+      return [...COMMON_RULES, ...(SECTION_RULES[section] || [])];
+    }
+
+    function renderResult(mainItem, candidates) {
+      const section = sectionFromCode(mainItem.code);
+      const rules = getRulesBySection(section);
+      const rulesTable = renderTable(["구분", "산업안전보건기준에 관한 규칙 조문"], rules);
+      const penaltyTable = renderTable(["위반 유형(대표)", "과태료 근거 조문", "과태료 금액"], COMMON_PENALTIES);
+      const links = SOURCES
+        .map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`)
+        .join("");
+
+      const candidateButtons = candidates
+        .slice(0, 10)
+        .map((c) => `<button class="match" data-code="${escapeHtml(c.code)}">${escapeHtml(c.code)} ${escapeHtml(c.name)}</button>`)
+        .join("");
+
+      resultEl.innerHTML = `
+        <h2 class="result-title">${escapeHtml(mainItem.name)} 조회 결과</h2>
+        <p class="note">인식된 KSIC: <code>${escapeHtml(mainItem.code)}</code> (${mainItem.digit}자리), 대분류 섹션: <code>${escapeHtml(section || "확인필요")}</code></p>
+        <h3>1) 사업주 준수 조문 (산업안전보건기준에 관한 규칙)</h3>
+        ${rulesTable}
+        <h3 style="margin-top:14px;">2) 과태료 조항 및 금액 (산업안전보건법/시행령 별표35 기반)</h3>
+        ${penaltyTable}
+        <div class="warn">
+          주의: 과태료는 위반횟수(1·2·3차), 위반행위 세부유형, 사업장 규모 감경, 대상 인원 수(예: 건강진단) 등에 따라 달라집니다.
+          최종 금액은 최신 법령 원문과 관할 고용노동관서 집행기준으로 확인해야 합니다.
+        </div>
+        <div style="margin-top:12px;">
+          <strong>유사 검색 결과</strong>
+          <div class="match-list">${candidateButtons || "<span class='empty'>후보 없음</span>"}</div>
+        </div>
+        <div class="links" style="margin-top:12px;">
+          <strong>법령 확인 링크</strong>
+          <ul>${links}</ul>
+        </div>
+      `;
+
+      resultEl.querySelectorAll(".match[data-code]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const code = btn.getAttribute("data-code");
+          const picked = CODE_TO_ITEM.get(code);
+          if (!picked) return;
+          inputEl.value = `${picked.code} ${picked.name}`;
+          renderResult(picked, candidates);
+        });
+      });
+    }
+
+    function runSearch() {
+      const query = inputEl.value;
+      const results = searchKSIC(query);
+
+      if (!results.length) {
+        resultEl.innerHTML = `
+          <h2 class="result-title">조회 결과 없음</h2>
+          <p class="empty">입력값 "${escapeHtml(query)}"에 해당하는 KSIC 업종을 찾지 못했습니다. 업종명을 더 짧게 입력하거나 KSIC 코드를 입력해 보세요.</p>
+        `;
+        return;
+      }
+
+      renderResult(results[0], results);
+    }
+
+    function buildSuggestions() {
+      const tags = [
+        "플라스틱 용기 제조업",
+        "시스템 소프트웨어 개발 및 공급업",
+        "아파트 건설업",
+        "한식 음식점업",
+        "20129",
+        "58221"
+      ];
+      suggEl.innerHTML = tags.map((t) => `<span class="tag" data-key="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("");
 
       suggEl.querySelectorAll(".tag").forEach((tag) => {
         tag.addEventListener("click", () => {
@@ -306,93 +424,15 @@
       });
     }
 
-    function findIndustry(query) {
-      const q = query.trim().toLowerCase();
-      if (!q) return null;
+    metaEl.textContent = KSIC.length
+      ? `KSIC 제11차 전체 코드 로드 완료: ${KSIC.length.toLocaleString("ko-KR")}개 (1~5자리 전체 계층)`
+      : "KSIC 데이터 로드 실패: ksic11_full.js 파일을 같은 폴더에 두세요.";
 
-      let best = null;
-      let bestScore = 0;
-
-      for (const item of DATA) {
-        const tokens = [item.name, ...item.keywords].map((v) => v.toLowerCase());
-        let score = 0;
-
-        for (const token of tokens) {
-          if (q.includes(token)) score += 2;
-          if (token.includes(q)) score += 1;
-        }
-
-        if (score > bestScore) {
-          best = item;
-          bestScore = score;
-        }
-      }
-
-      return bestScore > 0 ? best : null;
-    }
-
-    function renderTable(headers, rows) {
-      const head = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
-      const body = rows
-        .map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`)
-        .join("");
-
-      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-    }
-
-    function renderResult(item, query) {
-      if (!item) {
-        resultEl.innerHTML = `
-          <h2 class="result-title">조회 결과 없음</h2>
-          <p class="empty">입력값 "${escapeHtml(query)}"에 대한 내부 매핑이 없습니다. 키워드를 더 단순하게 입력해 보세요. (예: 플라스틱, 건설, 금속, 식품)</p>
-          <p class="note">필요하면 이 파일의 <code>DATA</code> 배열에 업종과 조문/과태료 항목을 추가해 확장할 수 있습니다.</p>
-        `;
-        return;
-      }
-
-      const rulesTable = renderTable(
-        ["구분", "산업안전보건기준에 관한 규칙 조문"],
-        item.rules
-      );
-
-      const penaltyTable = renderTable(
-        ["위반 유형(대표)", "과태료 근거 조문", "과태료 금액"],
-        item.penalties
-      );
-
-      const sourceLinks = SOURCES
-        .map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`)
-        .join("");
-
-      resultEl.innerHTML = `
-        <h2 class="result-title">${escapeHtml(item.name)} 조회 결과</h2>
-        <h3>1) 사업주 준수 조문 (산업안전보건기준에 관한 규칙)</h3>
-        ${rulesTable}
-        <h3 style="margin-top:14px;">2) 과태료 조항 및 금액 (산업안전보건법/시행령 별표35 기반)</h3>
-        ${penaltyTable}
-        <div class="warn">
-          주의: 과태료는 위반유형, 위반횟수(1·2·3차), 사업장 규모 감경, 사고 발생 여부에 따라 달라질 수 있습니다.
-          최종 판단은 반드시 최신 법령 원문(법/시행령/별표)과 관할 고용노동관서 해석으로 확인하세요.
-        </div>
-        <div class="links" style="margin-top:12px;">
-          <strong>법령 확인 링크</strong>
-          <ul>${sourceLinks}</ul>
-        </div>
-      `;
-    }
-
-    function runSearch() {
-      const query = inputEl.value;
-      const item = findIndustry(query);
-      renderResult(item, query);
-    }
-
+    buildSuggestions();
     btnEl.addEventListener("click", runSearch);
     inputEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") runSearch();
     });
-
-    buildSuggestions();
   </script>
 </body>
 </html>
