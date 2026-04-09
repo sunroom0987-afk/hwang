@@ -469,7 +469,7 @@
     }
 
     function makeMoelSearchLink(keyword) {
-      return `https://www.moel.go.kr/search.do?collection=ALL&query=${encodeURIComponent(`고용노동부 질의회시 ${keyword}`)}`;
+      return `https://1350.moel.go.kr/home/hp/counsel/csinfo.do?cs_idx=2&where=faq&keyword=${encodeURIComponent(keyword)}`;
     }
 
     function evaluateAnnex1(mainItem, workerCount, manualFlags) {
@@ -504,7 +504,7 @@
       const workerCountRaw = workerCountEl.value.trim();
       const workerCount = workerCountRaw === "" ? NaN : Number(workerCountRaw);
       const annexMatches = evaluateAnnex1(mainItem, workerCount, { officeOnly: officeOnlyEl.checked, mineLaw: mineLawEl.checked, nuclearLaw: nuclearLawEl.checked, aviationLaw: aviationLawEl.checked, shipLaw: shipLawEl.checked });
-      const qnaRows = getMoelQnaBySection(section).map((topic, idx) => [`${idx + 1}`, `<a href="${makeMoelSearchLink(topic)}" target="_blank" rel="noopener noreferrer">${escapeHtml(topic)}</a>`, "고용노동부 통합검색"]);
+      const qnaRows = getMoelQnaBySection(section).map((topic, idx) => [`${idx + 1}`, `<a href="${makeMoelSearchLink(topic)}" target="_blank" rel="noopener noreferrer">${escapeHtml(topic)}</a>`, "고용노동부 고객상담센터(1350)"]);
 
       const ruleRows = rules.map((r) => [r[0], linkifyLawText(r[1], "rule")]);
       const penaltyRows = COMMON_PENALTIES.map((p) => [p[0], linkifyLawText(p[1], "law"), p[2]]);
@@ -532,7 +532,7 @@
         <div class="warn">
           주의: 과태료는 위반횟수(1·2·3차), 위반행위 세부유형, 사업장 규모 감경, 대상 인원 수(예: 건강진단) 등에 따라 달라집니다.
           별표1 판정은 KSIC 기반 자동추정과 사용자 체크를 함께 사용한 결과이므로, 최종 적용은 최신 법령 원문으로 반드시 재확인해야 합니다.
-          질의회시는 고용노동부 검색 링크 기반의 대표 조회 주제 예시입니다.
+          질의회시는 고용노동부 고객상담센터(1350) 산업안전 FAQ 검색 링크 기반의 대표 조회 주제 예시입니다.
         </div>
         <div style="margin-top:12px;">
           <strong>유사 검색 결과</strong>
