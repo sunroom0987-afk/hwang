@@ -123,6 +123,21 @@
 
     button:hover { filter: brightness(1.03); }
 
+    .live-box {
+      margin-top: 8px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+
+    .live-title {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
     .tag-list {
       margin-top: 10px;
       display: flex;
@@ -232,6 +247,10 @@
         <input id="industryInput" type="text" placeholder="예: 플라스틱 용기 제조업, 시스템 소프트웨어 개발 및 공급업, 20129" />
         <button id="searchBtn" type="button">조회</button>
       </div>
+      <div class="live-box" id="liveBox">
+        <div class="live-title">입력 중 유사 업종 예시</div>
+        <div class="match-list" id="liveMatches"><span class="empty">업종 키워드를 입력하면 유사 업종을 보여줍니다.</span></div>
+      </div>
       <div class="extra-grid">
         <div class="field">
           <label for="workerCountInput">상시 근로자 수(명)</label>
@@ -322,6 +341,19 @@
       [85, 85, "P"], [86, 87, "Q"], [90, 91, "R"], [94, 96, "S"], [97, 98, "T"], [99, 99, "U"]
     ];
 
+    const MOEL_QNA_TOP_BY_SECTION = {
+      C: ["위험성평가 실시 및 기록 보존 범위", "기계 방호장치 해체·무력화 금지 기준", "유기용제 취급 시 국소배기장치 설치 기준", "특수건강진단 대상 작업·대상자 판단", "도급 시 안전보건조치 의무 분담 기준"],
+      F: ["추락방지조치(안전난간·안전대·작업발판) 기준", "중대위험작업 작업계획서 작성 범위", "건설현장 도급·하도급 안전보건 책임", "가설구조물 점검 주기 및 점검자 자격", "위험성평가 및 TBM 운영 방식"],
+      G: ["지게차 운행구역·보행자 통로 분리 기준", "하역작업 신호수 배치 기준", "창고 적재물 붕괴방지 조치", "도급 물류작업 안전보건 협의체 운영", "야간작업 조도·비상대응 체계"],
+      H: ["운송·상하차 작업 중 끼임·충돌 예방 기준", "사업장 내 차량 동선 관리 의무", "도급 운송업 안전보건 조치 범위", "장시간 운전 근로자 건강보호 조치", "화물 취급 시 보호구 지급 기준"],
+      I: ["주방 화기·가스설비 안전점검 범위", "고온작업 화상 예방 보호구 기준", "세척제·소독제 취급 시 환기조치", "휴게시간·폭염대책 운영 기준", "외식업 도급·용역 안전보건 협업"],
+      J: ["VDT 작업자 건강장해 예방조치", "사무실 전기·화재 안전관리 기준", "IT장비실 유지보수 작업 위험관리", "재택·원격근무 안전보건 관리 범위", "근골격계 유해요인조사 적용 판단"],
+      K: ["금융업 사무직 중심 사업장 적용 제외 범위", "고객응대근로자 건강보호 조치", "사무환경 유해요인(조도·소음) 관리", "야간교대 근무자 건강보호 조치", "위험성평가 문서화 수준"],
+      M: ["시험·연구실 화학물질 관리 기준", "MSDS 비치·교육 의무 범위", "실험실 환기·배기장치 기준", "연구개발업 50인 미만 적용 제외 해석", "도급 연구용역 안전보건 조치"],
+      Q: ["병원·요양시설 근골격계 부담작업 관리", "감염성 물질 취급 보호구 기준", "사회복지시설 적용 제외 규정 해석", "야간·교대근무 건강관리 기준", "감정노동 종사자 보호조치"],
+      default: ["위험성평가 시행·기록 방식", "안전보건교육 실시 주기·대상", "도급 시 안전보건 협의체 운영 기준", "보호구 지급·착용관리 의무", "작업환경측정 및 건강진단 대상 판단"]
+    };
+
     const inputEl = document.getElementById("industryInput");
     const workerCountEl = document.getElementById("workerCountInput");
     const officeOnlyEl = document.getElementById("officeOnlyInput");
@@ -333,23 +365,16 @@
     const resultEl = document.getElementById("resultBox");
     const suggEl = document.getElementById("suggestions");
     const metaEl = document.getElementById("loadedMeta");
+    const liveMatchesEl = document.getElementById("liveMatches");
 
     const CODE_TO_ITEM = new Map(KSIC.map((row) => [row.code, row]));
 
     function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
     function normalize(value) {
-      return String(value || "")
-        .toLowerCase()
-        .replace(/\s+/g, "")
-        .replace(/[()\[\],./·\-~;:]/g, "");
+      return String(value || "").toLowerCase().replace(/\s+/g, "").replace(/[()\[\],./·\-~;:]/g, "");
     }
 
     function containsNorm(text, keyword) {
@@ -383,35 +408,18 @@
         if (rawCode.length >= 4) codes.push(rawCode.slice(0, 4));
         if (rawCode.length >= 5) codes.push(rawCode.slice(0, 5));
       }
-
-      const uniqueCodes = [...new Set(codes)];
-      const names = uniqueCodes
-        .map((code) => (CODE_TO_ITEM.get(code) || {}).name)
-        .filter(Boolean);
-
-      return {
-        section,
-        division: getDivision(rawCode),
-        names,
-        joined: names.join(" "),
-        normalizedJoined: normalize(names.join(" "))
-      };
+      const names = [...new Set(codes)].map((code) => (CODE_TO_ITEM.get(code) || {}).name).filter(Boolean);
+      return { section, division: getDivision(rawCode), names, normalizedJoined: normalize(names.join(" ")) };
     }
 
     function linkifyLawText(rawText, lawType) {
       let out = escapeHtml(rawText);
       const base = LAW_BASE[lawType];
       if (base) {
-        out = out.replace(/(제\d+조(?:의\d+)?)/g, (m) => {
-          const href = encodeURI(`${base}/${m}`);
-          return `<a href="${href}" target="_blank" rel="noopener noreferrer">${m}</a>`;
-        });
+        out = out.replace(/(제\d+조(?:의\d+)?)/g, (m) => `<a href="${encodeURI(`${base}/${m}`)}" target="_blank" rel="noopener noreferrer">${m}</a>`);
       }
       if (lawType === "decree") {
-        out = out.replace(/(별표\s*1|별표1)/g, (m) => {
-          const href = encodeURI(`${LAW_BASE.decree}/별표1`);
-          return `<a href="${href}" target="_blank" rel="noopener noreferrer">${m}</a>`;
-        });
+        out = out.replace(/(별표\s*1|별표1)/g, (m) => `<a href="${encodeURI(`${LAW_BASE.decree}/별표1`)}" target="_blank" rel="noopener noreferrer">${m}</a>`);
       }
       return out;
     }
@@ -419,13 +427,11 @@
     function renderTable(headers, rows, htmlCols) {
       const richCols = new Set(Array.isArray(htmlCols) ? htmlCols : []);
       const head = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
-      const body = rows
-        .map((r) => `<tr>${r.map((c, idx) => `<td>${richCols.has(idx) ? c : escapeHtml(c)}</td>`).join("")}</tr>`)
-        .join("");
+      const body = rows.map((r) => `<tr>${r.map((c, idx) => `<td>${richCols.has(idx) ? c : escapeHtml(c)}</td>`).join("")}</tr>`).join("");
       return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
     }
 
-    function searchKSIC(query) {
+    function searchKSIC(query, limit) {
       const raw = String(query || "").trim();
       const qNorm = normalize(raw);
       if (!qNorm) return [];
@@ -441,24 +447,29 @@
         const nameNorm = normalize(item.name);
         const code = item.code;
         let score = 0;
-
         if (nameNorm === qNorm) score += 120;
         else if (nameNorm.startsWith(qNorm)) score += 95;
         else if (nameNorm.includes(qNorm)) score += 80;
-
         if (qNorm.includes(nameNorm) && nameNorm.length > 1) score += 25;
         if (code.toLowerCase() === qNorm) score += 140;
         else if (code.toLowerCase().startsWith(qNorm)) score += 45;
-
         if (score > 0) scored.push({ item, score });
       }
 
       scored.sort((a, b) => b.score - a.score || b.item.digit - a.item.digit || a.item.code.localeCompare(b.item.code));
-      return scored.slice(0, 20).map((v) => v.item);
+      return scored.slice(0, Number.isFinite(limit) ? limit : 20).map((v) => v.item);
     }
 
     function getRulesBySection(section) {
       return [...COMMON_RULES, ...(SECTION_RULES[section] || [])];
+    }
+
+    function getMoelQnaBySection(section) {
+      return MOEL_QNA_TOP_BY_SECTION[section] || MOEL_QNA_TOP_BY_SECTION.default;
+    }
+
+    function makeMoelSearchLink(keyword) {
+      return `https://www.moel.go.kr/search.do?collection=ALL&query=${encodeURIComponent(`고용노동부 질의회시 ${keyword}`)}`;
     }
 
     function evaluateAnnex1(mainItem, workerCount, manualFlags) {
@@ -468,91 +479,22 @@
       const entries = [];
 
       if (manualFlags.mineLaw || manualFlags.nuclearLaw || manualFlags.aviationLaw || manualFlags.shipLaw) {
-        entries.push({
-          item: "제1호",
-          reason: "광산/원자력/항공/선박 안전 관련 타법 적용 사업(수동 체크)",
-          excluded: "별표1 제1호 적용 제외 규정(법 제13·14·15·제3장 등)"
-        });
+        entries.push({ item: "제1호", reason: "광산/원자력/항공/선박 안전 관련 타법 적용 사업(수동 체크)", excluded: "별표1 제1호 적용 제외 규정(법 제13·14·15·제3장 등)" });
       }
 
-      const item2 =
-        containsNorm(m, "소프트웨어 개발 및 공급업") ||
-        containsNorm(m, "컴퓨터 프로그래밍") ||
-        containsNorm(m, "시스템 통합 및 관리업") ||
-        containsNorm(m, "정보서비스업") ||
-        ctx.section === "K" ||
-        containsNorm(m, "전문서비스업") ||
-        containsNorm(m, "건축기술, 엔지니어링 및 기타 과학기술 서비스업") ||
-        (containsNorm(m, "기타 전문, 과학 및 기술 서비스업") && !containsNorm(m, "사진 처리업")) ||
-        containsNorm(m, "사업지원 서비스업") ||
-        containsNorm(m, "사회복지 서비스업");
+      const item2 = containsNorm(m, "소프트웨어 개발 및 공급업") || containsNorm(m, "컴퓨터 프로그래밍") || containsNorm(m, "시스템 통합 및 관리업") || containsNorm(m, "정보서비스업") || ctx.section === "K" || containsNorm(m, "전문서비스업") || containsNorm(m, "건축기술, 엔지니어링 및 기타 과학기술 서비스업") || (containsNorm(m, "기타 전문, 과학 및 기술 서비스업") && !containsNorm(m, "사진 처리업")) || containsNorm(m, "사업지원 서비스업") || containsNorm(m, "사회복지 서비스업");
+      if (item2) entries.push({ item: "제2호", reason: "소프트웨어·정보서비스·금융보험·전문과학기술·사업지원·사회복지 계열 업종 해당", excluded: "법 제31조(같은 조 제3항 특별교육 제외)" });
 
-      if (item2) {
-        entries.push({
-          item: "제2호",
-          reason: "소프트웨어·정보서비스·금융보험·전문과학기술·사업지원·사회복지 계열 업종 해당",
-          excluded: "법 제31조(같은 조 제3항 특별교육 제외)"
-        });
+      if (Number.isFinite(workerCount) && workerCount < 50) {
+        const item3 = d === 1 || d === 3 || containsNorm(m, "환경 정화 및 복원업") || d === 47 || containsNorm(m, "영화, 비디오물, 방송프로그램 제작 및 배급업") || containsNorm(m, "녹음시설운영업") || d === 60 || (d === 68 && !containsNorm(m, "부동산 관리업")) || (containsNorm(m, "임대업") && !containsNorm(m, "부동산")) || d === 70 || (d === 86 && !containsNorm(m, "병원")) || d === 90 || d === 91 || d === 94 || (d === 96 && !containsNorm(m, "세탁업"));
+        if (item3) entries.push({ item: "제3호", reason: "별표1 제3호 대상 업종 + 상시 근로자 50명 미만", excluded: "별표1 제3호 적용 제외 규정(원문 확인 필요)" });
       }
 
-      const under50 = Number.isFinite(workerCount) && workerCount < 50;
-      if (under50) {
-        const item3 =
-          d === 1 ||
-          d === 3 ||
-          containsNorm(m, "환경 정화 및 복원업") ||
-          d === 47 ||
-          containsNorm(m, "영화, 비디오물, 방송프로그램 제작 및 배급업") ||
-          containsNorm(m, "녹음시설운영업") ||
-          d === 60 ||
-          (d === 68 && !containsNorm(m, "부동산 관리업")) ||
-          (containsNorm(m, "임대업") && !containsNorm(m, "부동산")) ||
-          d === 70 ||
-          (d === 86 && !containsNorm(m, "병원")) ||
-          d === 90 ||
-          d === 91 ||
-          d === 94 ||
-          (d === 96 && !containsNorm(m, "세탁업"));
+      const item4 = d === 84 || (d === 85 && !containsNorm(m, "청소년 수련시설 운영업")) || d === 99;
+      if (item4) entries.push({ item: "제4호", reason: "공공행정·교육서비스(일부 제외)·국제 및 외국기관 해당", excluded: "법 제2장, 제3장, 제29조제1항~제8항/제10항, 제31조, 제31조의2, 제32조, 제32조의2, 제32조의3" });
 
-        if (item3) {
-          entries.push({
-            item: "제3호",
-            reason: "별표1 제3호 대상 업종 + 상시 근로자 50명 미만",
-            excluded: "별표1 제3호 적용 제외 규정(원문 확인 필요)"
-          });
-        }
-      }
-
-      const item4 =
-        d === 84 ||
-        (d === 85 && !containsNorm(m, "청소년 수련시설 운영업")) ||
-        d === 99;
-
-      if (item4) {
-        entries.push({
-          item: "제4호",
-          reason: "공공행정·교육서비스(일부 제외)·국제 및 외국기관 해당",
-          excluded: "법 제2장, 제3장, 제29조제1항~제8항/제10항, 제31조, 제31조의2, 제32조, 제32조의2, 제32조의3"
-        });
-      }
-
-      if (manualFlags.officeOnly) {
-        entries.push({
-          item: "제5호",
-          reason: "사무직 근로자만 사용하는 사업장(수동 체크)",
-          excluded: "별표1 제5호 적용 제외 규정(원문 확인 필요)"
-        });
-      }
-
-      const under5 = Number.isFinite(workerCount) && workerCount < 5;
-      if (under5) {
-        entries.push({
-          item: "제6호",
-          reason: "상시 근로자 5명 미만 사업장",
-          excluded: "법 제2장, 제3장, 제31조(제3항 특별교육 제외), 제31조의2, 제32조, 제32조의2, 제32조의3, 제49조, 제50조, 제51조의2"
-        });
-      }
-
+      if (manualFlags.officeOnly) entries.push({ item: "제5호", reason: "사무직 근로자만 사용하는 사업장(수동 체크)", excluded: "별표1 제5호 적용 제외 규정(원문 확인 필요)" });
+      if (Number.isFinite(workerCount) && workerCount < 5) entries.push({ item: "제6호", reason: "상시 근로자 5명 미만 사업장", excluded: "법 제2장, 제3장, 제31조(제3항 특별교육 제외), 제31조의2, 제32조, 제32조의2, 제32조의3, 제49조, 제50조, 제51조의2" });
       return entries;
     }
 
@@ -561,35 +503,20 @@
       const rules = getRulesBySection(section);
       const workerCountRaw = workerCountEl.value.trim();
       const workerCount = workerCountRaw === "" ? NaN : Number(workerCountRaw);
-      const annexMatches = evaluateAnnex1(mainItem, workerCount, {
-        officeOnly: officeOnlyEl.checked,
-        mineLaw: mineLawEl.checked,
-        nuclearLaw: nuclearLawEl.checked,
-        aviationLaw: aviationLawEl.checked,
-        shipLaw: shipLawEl.checked
-      });
+      const annexMatches = evaluateAnnex1(mainItem, workerCount, { officeOnly: officeOnlyEl.checked, mineLaw: mineLawEl.checked, nuclearLaw: nuclearLawEl.checked, aviationLaw: aviationLawEl.checked, shipLaw: shipLawEl.checked });
+      const qnaRows = getMoelQnaBySection(section).map((topic, idx) => [`${idx + 1}`, `<a href="${makeMoelSearchLink(topic)}" target="_blank" rel="noopener noreferrer">${escapeHtml(topic)}</a>`, "고용노동부 통합검색"]);
 
       const ruleRows = rules.map((r) => [r[0], linkifyLawText(r[1], "rule")]);
       const penaltyRows = COMMON_PENALTIES.map((p) => [p[0], linkifyLawText(p[1], "law"), p[2]]);
+      const annexRows = (annexMatches.length ? annexMatches.map((x) => [x.item, x.reason, x.excluded]) : [["해당 없음", "입력한 업종/근로자수/체크 기준으로는 별표1 적용 제외 항목 미확인", "-"]]).map((x) => [x[0], x[1], linkifyLawText(x[2], "decree")]);
+
       const rulesTable = renderTable(["구분", "산업안전보건기준에 관한 규칙 조문"], ruleRows, [1]);
       const penaltyTable = renderTable(["위반 유형(대표)", "과태료 근거 조문", "과태료 금액"], penaltyRows, [1]);
-      const annexRows = (annexMatches.length
-          ? annexMatches.map((x) => [x.item, x.reason, x.excluded])
-          : [["해당 없음", "입력한 업종/근로자수/체크 기준으로는 별표1 적용 제외 항목 미확인", "-"]]
-        ).map((x) => [x[0], x[1], linkifyLawText(x[2], "decree")]);
-      const annexTable = renderTable(
-        ["별표1 해당호", "해당 사유(판정근거)", "적용 제외 규정(요약)"],
-        annexRows,
-        [2]
-      );
-      const links = SOURCES
-        .map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`)
-        .join("");
+      const annexTable = renderTable(["별표1 해당호", "해당 사유(판정근거)", "적용 제외 규정(요약)"], annexRows, [2]);
+      const qnaTable = renderTable(["No", "고용노동부 질의회시 주제(자주 조회 예시)", "바로가기"], qnaRows, [1]);
+      const links = SOURCES.map((s) => `<li><a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a></li>`).join("");
 
-      const candidateButtons = candidates
-        .slice(0, 10)
-        .map((c) => `<button class="match" data-code="${escapeHtml(c.code)}">${escapeHtml(c.code)} ${escapeHtml(c.name)}</button>`)
-        .join("");
+      const candidateButtons = candidates.slice(0, 10).map((c) => `<button class="match" data-code="${escapeHtml(c.code)}">${escapeHtml(c.code)} ${escapeHtml(c.name)}</button>`).join("");
 
       resultEl.innerHTML = `
         <h2 class="result-title">${escapeHtml(mainItem.name)} 조회 결과</h2>
@@ -600,9 +527,12 @@
         ${penaltyTable}
         <h3 style="margin-top:14px;">3) 산업안전보건법 시행령 별표1 적용 제외 여부</h3>
         ${annexTable}
+        <h3 style="margin-top:14px;">4) 업종별 고용노동부 질의회시(예시 5건)</h3>
+        ${qnaTable}
         <div class="warn">
           주의: 과태료는 위반횟수(1·2·3차), 위반행위 세부유형, 사업장 규모 감경, 대상 인원 수(예: 건강진단) 등에 따라 달라집니다.
           별표1 판정은 KSIC 기반 자동추정과 사용자 체크를 함께 사용한 결과이므로, 최종 적용은 최신 법령 원문으로 반드시 재확인해야 합니다.
+          질의회시는 고용노동부 검색 링크 기반의 대표 조회 주제 예시입니다.
         </div>
         <div style="margin-top:12px;">
           <strong>유사 검색 결과</strong>
@@ -628,49 +558,56 @@
     function runSearch() {
       const query = inputEl.value;
       const results = searchKSIC(query);
-
       if (!results.length) {
-        resultEl.innerHTML = `
-          <h2 class="result-title">조회 결과 없음</h2>
-          <p class="empty">입력값 "${escapeHtml(query)}"에 해당하는 KSIC 업종을 찾지 못했습니다. 업종명을 더 짧게 입력하거나 KSIC 코드를 입력해 보세요.</p>
-        `;
+        resultEl.innerHTML = `<h2 class="result-title">조회 결과 없음</h2><p class="empty">입력값 "${escapeHtml(query)}"에 해당하는 KSIC 업종을 찾지 못했습니다. 업종명을 더 짧게 입력하거나 KSIC 코드를 입력해 보세요.</p>`;
         return;
       }
-
       renderResult(results[0], results);
     }
 
-    function buildSuggestions() {
-      const tags = [
-        "플라스틱 용기 제조업",
-        "시스템 소프트웨어 개발 및 공급업",
-        "아파트 건설업",
-        "한식 음식점업",
-        "20129",
-        "58221"
-      ];
-      suggEl.innerHTML = tags.map((t) => `<span class="tag" data-key="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("");
-
-      suggEl.querySelectorAll(".tag").forEach((tag) => {
-        tag.addEventListener("click", () => {
-          inputEl.value = tag.getAttribute("data-key") || "";
+    function renderLiveExamples() {
+      const query = inputEl.value;
+      const results = searchKSIC(query, 8);
+      if (!query.trim()) {
+        liveMatchesEl.innerHTML = "<span class='empty'>업종 키워드를 입력하면 유사 업종을 보여줍니다.</span>";
+        return;
+      }
+      if (!results.length) {
+        liveMatchesEl.innerHTML = "<span class='empty'>유사 업종을 찾지 못했습니다.</span>";
+        return;
+      }
+      liveMatchesEl.innerHTML = results.map((r) => `<button class="match" data-live-code="${escapeHtml(r.code)}">${escapeHtml(r.code)} ${escapeHtml(r.name)}</button>`).join("");
+      liveMatchesEl.querySelectorAll(".match[data-live-code]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const code = btn.getAttribute("data-live-code");
+          const picked = CODE_TO_ITEM.get(code);
+          if (!picked) return;
+          inputEl.value = `${picked.code} ${picked.name}`;
           runSearch();
+          renderLiveExamples();
         });
       });
     }
 
-    metaEl.textContent = KSIC.length
-      ? `KSIC 제11차 전체 코드 로드 완료: ${KSIC.length.toLocaleString("ko-KR")}개 (1~5자리 전체 계층)`
-      : "KSIC 데이터 로드 실패: ksic11_full.js 파일을 같은 폴더에 두세요.";
+    function buildSuggestions() {
+      const tags = ["플라스틱 용기 제조업", "시스템 소프트웨어 개발 및 공급업", "아파트 건설업", "한식 음식점업", "20129", "58221"];
+      suggEl.innerHTML = tags.map((t) => `<span class="tag" data-key="${escapeHtml(t)}">${escapeHtml(t)}</span>`).join("");
+      suggEl.querySelectorAll(".tag").forEach((tag) => {
+        tag.addEventListener("click", () => {
+          inputEl.value = tag.getAttribute("data-key") || "";
+          runSearch();
+          renderLiveExamples();
+        });
+      });
+    }
 
+    metaEl.textContent = KSIC.length ? `KSIC 제11차 전체 코드 로드 완료: ${KSIC.length.toLocaleString("ko-KR")}개 (1~5자리 전체 계층)` : "KSIC 데이터 로드 실패: ksic11_full.js 파일을 같은 폴더에 두세요.";
     buildSuggestions();
+    renderLiveExamples();
     btnEl.addEventListener("click", runSearch);
-    inputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") runSearch();
-    });
-    workerCountEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") runSearch();
-    });
+    inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
+    inputEl.addEventListener("input", renderLiveExamples);
+    workerCountEl.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
   </script>
 </body>
 </html>
